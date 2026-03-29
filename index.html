@@ -264,7 +264,7 @@ const restaurants = [
   {
     name: "아다나케밥 한양대2호점",
     type: "full",
-    lat: 37.5594, 127.0408,
+    lat: 37.5594, lng: 127.0408,
     address: "성동구 마조로 17",
     menu: "팔라펠 랩, 박스, 라이스 플레이트",
     hours: "unknown",
@@ -278,8 +278,8 @@ const typeLabel = { full: "완전 비건", partial: "수정 시 비건", friendl
 const tagClass  = { full: "tag-full", partial: "tag-partial", friendly: "tag-friendly" };
 
 const map = L.map('map', {
-  center: [37.5560, 127.0445],
-  zoom: 15
+  center: [37.5596, 127.0407],
+  zoom: 16
 });
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
