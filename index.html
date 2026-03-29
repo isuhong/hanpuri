@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>한양대 비건 지도</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #f7f5f0;
+      color: #1a1a1a;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e8e4dc;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      background: #1D9E75;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-full    { background: #1D9E75; }
+    .dot-partial { background: #BA7517; }
+    .dot-friendly{ background: #378ADD; }
+
+    #map {
+      width: 100%;
+      height: 440px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #e0dbd0;
+    }
+
+    #info-panel {
+      margin-top: 12px;
+      background: #fff;
+      border: 1px solid #e8e4dc;
+      border-radius: 14px;
+      padding: 16px 20px;
+      min-height: 80px;
+    }
+
+    .info-placeholder {
+      font-size: 14px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+    }
+
+    .info-name {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .info-tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .tag-full     { background: #E1F5EE; color: #0F6E56; }
+    .tag-partial  { background: #FAEEDA; color: #854F0B; }
+    .tag-friendly { background: #E6F1FB; color: #185FA5; }
+
+    .info-row {
+      font-size: 13px;
+      color: #666;
+      margin-top: 5px;
+      line-height: 1.6;
+    }
+
+    .info-note {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #333;
+      background: #f7f5f0;
+      border-left: 3px solid #1D9E75;
+      padding: 8px 12px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌱</div>
+  <div>
+    <h1>한양대 비건 지도</h1>
+    <p>왕십리 · 한양대 일대 비건 식당 모음</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot dot-full"></div> 완전 비건 메뉴 있음</div>
+    <div class="legend-item"><div class="dot dot-partial"></div> 재료 수정 시 비건 가능</div>
+    <div class="legend-item"><div class="dot dot-friendly"></div> 비건 친화적</div>
+  </div>
+
+  <div id="map"></div>
+  <div id="info-panel">
+    <div class="info-placeholder">지도의 마커를 클릭하면 식당 정보가 표시됩니다</div>
+  </div>
+
+</div>
+
+<footer>
+  데이터 오류나 제보는 이 페이지 운영자에게 연락해 주세요.
+</footer>
+
+<script>
+/* =====================================================
+   🌱 식당 데이터 — 여기만 수정하면 됩니다!
+   
+   type 값:
+     "full"     → 완전 비건 메뉴 있음  (초록 마커)
+     "partial"  → 재료 수정 시 비건 가능 (주황 마커)
+     "friendly" → 비건 친화적          (파랑 마커)
+   
+   lat, lng:
+     구글 지도에서 원하는 위치 우클릭
+     → "이 장소에 대하여" 클릭
+     → 상단에 숫자 두 개가 위도(lat), 경도(lng)입니다.
+===================================================== */
+const restaurants = [
+  {
+    name: "비건 한상",
+    type: "full",
+    lat: 37.5575, lng: 127.0439,
+    address: "성동구 왕십리로 410",
+    menu: "비건 한정식, 두부조림, 나물비빔밥",
+    hours: "11:00 – 21:00 (월요일 휴무)",
+    note: "모든 메뉴가 완전 비건. 육수도 채소 육수 사용."
+  },
+  {
+    name: "푸른 카페",
+    type: "full",
+    lat: 37.5558, lng: 127.0461,
+    address: "성동구 왕십리로 95",
+    menu: "귀리라떼, 비건 베이글, 두유스무디",
+    hours: "08:00 – 20:00",
+    note: "식물성 음료만 취급. 비건 디저트 다수."
+  },
+  {
+    name: "오트밀 키친",
+    type: "friendly",
+    lat: 37.5548, lng: 127.0418,
+    address: "성동구 행당동 21-5",
+    menu: "샐러드 볼, 그레인 보울, 콜드브루",
+    hours: "09:00 – 19:00 (주말 휴무)",
+    note: "비건 옵션 메뉴판 별도 제공."
+  },
+  {
+    name: "참나무 쌈밥집",
+    type: "partial",
+    lat: 37.5562, lng: 127.0402,
+    address: "성동구 행당동 55",
+    menu: "쌈밥 정식, 된장찌개, 제육볶음",
+    hours: "11:30 – 21:30",
+    note: "제육 빼고 채소쌈+된장으로 주문 시 비건 가능. 미리 말씀해야 함."
+  },
+  {
+    name: "노마드 브런치",
+    type: "partial",
+    lat: 37.5541, lng: 127.0453,
+    address: "성동구 왕십리로2길 14",
+    menu: "아보카도 토스트, 팬케이크, 파스타",
+    hours: "10:00 – 20:00",
+    note: "아보카도 토스트에서 계란 빼고, 두유 치환 요청 가능."
+  },
+  {
+    name: "한양 그린볼",
+    type: "full",
+    lat: 37.5571, lng: 127.0489,
+    address: "성동구 사근동 36",
+    menu: "비건 포케, 두부 커리, 통곡물 샌드위치",
+    hours: "11:00 – 20:00",
+    note: "한양대 후문 근처. 배달 가능."
+  }
+];
+/* ===================================================== */
+
+const typeColor = { full: "#1D9E75", partial: "#BA7517", friendly: "#378ADD" };
+const typeLabel = { full: "완전 비건", partial: "수정 시 비건", friendly: "비건 친화적" };
+const tagClass  = { full: "tag-full", partial: "tag-partial", friendly: "tag-friendly" };
+
+const map = L.map('map', {
+  center: [37.5560, 127.0445],
+  zoom: 15
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+function makeIcon(type) {
+  const color = typeColor[type];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z"
+      fill="${color}" stroke="white" stroke-width="2"/>
+    <circle cx="14" cy="14" r="5" fill="white" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [28, 36],
+    iconAnchor: [14, 36]
+  });
+}
+
+function showInfo(r) {
+  document.getElementById('info-panel').innerHTML = `
+    <div class="info-name">${r.name}</div>
+    <span class="info-tag ${tagClass[r.type]}">${typeLabel[r.type]}</span>
+    <div class="info-row">📍 ${r.address}</div>
+    <div class="info-row">🕐 ${r.hours}</div>
+    <div class="info-row">🍽 ${r.menu}</div>
+    <div class="info-note">💬 ${r.note}</div>
+  `;
+}
+
+restaurants.forEach(r => {
+  const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r.type) }).addTo(map);
+  marker.on('click', () => showInfo(r));
+});
+</script>
+
+</body>
+</html>
