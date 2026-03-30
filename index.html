@@ -158,9 +158,9 @@
 <div class="container">
 
   <div class="legend">
-    <div class="legend-item"><div class="dot dot-full"></div> 완전 비건 메뉴 있음</div>
-    <div class="legend-item"><div class="dot dot-partial"></div> 재료 수정 시 비건 가능</div>
-    <div class="legend-item"><div class="dot dot-friendly"></div> 비건 친화적</div>
+    <div class="legend-item"><div class="dot dot-full"></div> 비건 메뉴 있음</div>
+    <div class="legend-item"><div class="dot dot-partial"></div> 요청 시 비건 가능</div>
+    <div class="legend-item"><div class="dot dot-friendly"></div> 비건 가능</div>
   </div>
 
   <div id="map"></div>
@@ -171,7 +171,7 @@
 </div>
 
 <footer>
-  데이터 오류나 제보는 이 페이지 운영자에게 연락해 주세요.
+  데이터 오류나 제보는 인스타그램 @hyu._.hanpuri로 연락 주세요.
 </footer>
 
 <script>
@@ -274,7 +274,7 @@ const restaurants = [
 /* ===================================================== */
 
 const typeColor = { full: "#1D9E75", partial: "#BA7517", friendly: "#378ADD" };
-const typeLabel = { full: "완전 비건", partial: "수정 시 비건", friendly: "비건 친화적" };
+const typeLabel = { full: "완전 비건", partial: "요청 시 비건", friendly: "비건 친화적" };
 const tagClass  = { full: "tag-full", partial: "tag-partial", friendly: "tag-friendly" };
 
 const map = L.map('map', {
