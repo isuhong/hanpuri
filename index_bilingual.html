@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>한양대 비건 지도 | HYU Vegan Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f7f5f0;
+      color: #1a1a1a;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e8e4dc;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      background: #1D9E75;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .header-text { flex: 1; min-width: 0; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header p { font-size: 13px; color: #888; margin-top: 2px; }
+
+    /* 언어 선택 토글 */
+    .lang-switch {
+      display: flex;
+      background: #f0ede6;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lang-btn:hover { color: #444; }
+
+    .lang-btn.active {
+      background: #fff;
+      color: #1D9E75;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot-full    { background: #1D9E75; }
+    .dot-partial { background: #BA7517; }
+    .dot-friendly{ background: #378ADD; }
+
+    #map {
+      width: 100%;
+      height: 440px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #e0dbd0;
+    }
+
+    #info-panel {
+      margin-top: 12px;
+      background: #fff;
+      border: 1px solid #e8e4dc;
+      border-radius: 14px;
+      padding: 16px 20px;
+      min-height: 80px;
+    }
+
+    .info-placeholder {
+      font-size: 14px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+      text-align: center;
+    }
+
+    .info-name { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+
+    .info-tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .tag-full     { background: #E1F5EE; color: #0F6E56; }
+    .tag-partial  { background: #FAEEDA; color: #854F0B; }
+    .tag-friendly { background: #E6F1FB; color: #185FA5; }
+
+    .info-row {
+      font-size: 13px;
+      color: #666;
+      margin-top: 5px;
+      line-height: 1.6;
+    }
+
+    .info-note {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #333;
+      background: #f7f5f0;
+      border-left: 3px solid #1D9E75;
+      padding: 8px 12px;
+      border-radius: 0 8px 8px 0;
+      line-height: 1.6;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    @media (max-width: 520px) {
+      header { padding: 14px 16px; gap: 10px; }
+      header h1 { font-size: 16px; }
+      header p { display: none; }
+      .lang-btn { padding: 6px 10px; font-size: 12px; }
+      #map { height: 380px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌱</div>
+  <div class="header-text">
+    <h1 id="site-title">한양대 비건 지도</h1>
+    <p id="site-subtitle">왕십리 · 한양대 · 성수 일대 비건 식당 모음</p>
+  </div>
+  <div class="lang-switch">
+    <button class="lang-btn active" id="btn-ko" onclick="setLang('ko')">한글</button>
+    <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot dot-full"></div> <span id="legend-full">비건 메뉴 있음</span></div>
+    <div class="legend-item"><div class="dot dot-partial"></div> <span id="legend-partial">요청 시 비건 가능</span></div>
+    <div class="legend-item"><div class="dot dot-friendly"></div> <span id="legend-friendly">비건 가능</span></div>
+  </div>
+
+  <div id="map"></div>
+  <div id="info-panel">
+    <div class="info-placeholder" id="placeholder">지도의 마커를 클릭하면 식당 정보가 표시됩니다</div>
+  </div>
+
+</div>
+
+<footer id="site-footer">
+  데이터 오류나 제보는 인스타그램 @hyu._.hanpuri로 연락 주세요.
+</footer>
+
+<script>
+/* =====================================================
+   🌱 인터페이스 문구 (버튼·안내문 등)
+===================================================== */
+const ui = {
+  ko: {
+    title: "한양대 비건 지도",
+    subtitle: "왕십리 · 한양대 · 성수 일대 비건 식당 모음",
+    legendFull: "비건 메뉴 있음",
+    legendPartial: "요청 시 비건 가능",
+    legendFriendly: "비건 가능",
+    placeholder: "지도의 마커를 클릭하면 식당 정보가 표시됩니다",
+    footer: "데이터 오류나 제보는 인스타그램 @hyu._.hanpuri로 연락 주세요.",
+    tagFull: "완전 비건",
+    tagPartial: "요청 시 비건",
+    tagFriendly: "비건 친화적"
+  },
+  en: {
+    title: "HYU Vegan Map",
+    subtitle: "Vegan-friendly spots around Wangsimni, Hanyang Univ. & Seongsu",
+    legendFull: "Vegan menu available",
+    legendPartial: "Vegan on request",
+    legendFriendly: "Vegan-friendly",
+    placeholder: "Tap a marker on the map to see restaurant details",
+    footer: "Found an error or have a tip? Reach us on Instagram @hyu._.hanpuri",
+    tagFull: "Fully vegan",
+    tagPartial: "Vegan on request",
+    tagFriendly: "Vegan-friendly"
+  }
+};
+
+/* =====================================================
+   🌱 식당 데이터 — 여기만 수정하면 됩니다!
+
+   type 값:
+     "full"     → 비건 메뉴 있음        (초록 마커)
+     "partial"  → 요청 시 비건 가능     (주황 마커)
+     "friendly" → 비건 가능             (파랑 마커)
+
+   각 항목은 ko(한글) / en(영어) 두 벌로 되어 있습니다.
+   한쪽만 고치면 다른 언어는 그대로 남으니 양쪽 모두 확인해 주세요.
+
+   lat, lng:
+     구글 지도에서 원하는 위치 우클릭
+     → 맨 위 숫자 두 개가 위도(lat), 경도(lng)입니다.
+===================================================== */
+const restaurants = [
+  {
+    type: "full", lat: 37.5611, lng: 127.0407,
+    ko: {
+      name: "뺑드미 제빵소",
+      address: "성동구 마조로9길 5",
+      menu: "깜빠뉴, 무화과 깜빠뉴, 바게트",
+      hours: "09:00 – 20:00",
+      note: "빵을 비닐 봉지에 담아 주시니 용기 내보기!"
+    },
+    en: {
+      name: "Pain de Mie Bakery",
+      address: "5, Majo-ro 9-gil, Seongdong-gu",
+      menu: "Campagne, fig campagne, baguette",
+      hours: "09:00 – 20:00",
+      note: "Bread comes in plastic bags — bring your own container!"
+    }
+  },
+  {
+    type: "full", lat: 37.5588, lng: 127.0406,
+    ko: {
+      name: "써브웨이 한양대점",
+      address: "성동구 마조로 11",
+      menu: "베지, 웨지 포테이토, 샐러드",
+      hours: "08:30 – 22:30",
+      note: "빵은 화이트, 하티 이탈리안, 위트 가능"
+    },
+    en: {
+      name: "Subway (Hanyang Univ.)",
+      address: "11, Majo-ro, Seongdong-gu",
+      menu: "Veggie Delite, wedge potatoes, salad",
+      hours: "08:30 – 22:30",
+      note: "Vegan bread options: White, Hearty Italian, Wheat"
+    }
+  },
+  {
+    type: "full", lat: 37.5590, lng: 127.0410,
+    ko: {
+      name: "슬로우캘리 한양대점",
+      address: "성동구 마조로 22",
+      menu: "오리엔탈 두부 포케, 트러플 버섯 포케, 스파이시 토마토 야채 스프",
+      hours: "11:00 – 20:30 (일요일 휴무)",
+      note: "브레이크 타임 15:00 – 17:00"
+    },
+    en: {
+      name: "Slow Calo (Hanyang Univ.)",
+      address: "22, Majo-ro, Seongdong-gu",
+      menu: "Oriental tofu poke, truffle mushroom poke, spicy tomato vegetable soup",
+      hours: "11:00 – 20:30 (closed Sundays)",
+      note: "Break time 15:00 – 17:00"
+    }
+  },
+  {
+    type: "full", lat: 37.5597, lng: 127.0412,
+    ko: {
+      name: "샐러디 한양대점",
+      address: "성동구 마조로 24",
+      menu: "노릇 두부 단호박",
+      hours: "10:00 – 23:00",
+      note: "소스는 발사믹, 레몬, 레드와인비니거 가능"
+    },
+    en: {
+      name: "Salady (Hanyang Univ.)",
+      address: "24, Majo-ro, Seongdong-gu",
+      menu: "Pan-seared tofu & sweet pumpkin salad",
+      hours: "10:00 – 23:00",
+      note: "Vegan dressings: balsamic, lemon, red wine vinegar"
+    }
+  },
+  {
+    type: "partial", lat: 37.5584, lng: 127.0396,
+    ko: {
+      name: "베네토",
+      address: "성동구 마조로3길 7–1",
+      menu: "알리오 올리오, 오븐으로 구운 감자스틱",
+      hours: "11:00 – 23:00 (일요일 휴무)",
+      note: "파스타 주문 시 치즈와 베이컨을 빼달라고 요청하세요"
+    },
+    en: {
+      name: "Veneto",
+      address: "7-1, Majo-ro 3-gil, Seongdong-gu",
+      menu: "Aglio e olio, oven-baked potato sticks",
+      hours: "11:00 – 23:00 (closed Sundays)",
+      note: "Ask them to leave out the cheese and bacon when ordering pasta"
+    }
+  },
+  {
+    type: "friendly", lat: 37.5597, lng: 127.0402,
+    ko: {
+      name: "동래파전",
+      address: "성동구 마조로3가길 30",
+      menu: "감자전, 두부김치",
+      hours: "16:00 – 03:00",
+      note: "단체 회식에 용이함"
+    },
+    en: {
+      name: "Dongnae Pajeon",
+      address: "30, Majo-ro 3ga-gil, Seongdong-gu",
+      menu: "Potato pancake, tofu with kimchi",
+      hours: "16:00 – 03:00",
+      note: "Good choice for group dinners"
+    }
+  },
+  {
+    type: "partial", lat: 37.5602, lng: 127.0415,
+    ko: {
+      name: "한골향 마라탕",
+      address: "성동구 마조로 30 2층",
+      menu: "마라탕",
+      hours: "10:00 – 23:00",
+      note: "맹물로 조리 요청 (약간 밍밍함)"
+    },
+    en: {
+      name: "Hangolhyang Malatang",
+      address: "30, Majo-ro, 2F, Seongdong-gu",
+      menu: "Malatang (spicy hotpot soup)",
+      hours: "10:00 – 23:00",
+      note: "Ask for plain water broth (a bit bland, but vegan)"
+    }
+  },
+  {
+    type: "full", lat: 37.5600, lng: 127.0408,
+    ko: {
+      name: "파머스포케 한양대점",
+      address: "성동구 마조로 25",
+      menu: "파머스비건 포케",
+      hours: "10:00 – 20:00",
+      note: "숯불고기 포케(Plant-based) 주문 시 날치알 제외 요청"
+    },
+    en: {
+      name: "Farmer's Poke (Hanyang Univ.)",
+      address: "25, Majo-ro, Seongdong-gu",
+      menu: "Farmer's Vegan Poke",
+      hours: "10:00 – 20:00",
+      note: "For the plant-based BBQ poke, ask them to leave out the flying fish roe"
+    }
+  },
+  {
+    type: "partial", lat: 37.5594, lng: 127.0408,
+    ko: {
+      name: "아다나케밥 한양대2호점",
+      address: "성동구 마조로 17",
+      menu: "팔라펠 랩, 박스, 라이스 플레이트",
+      hours: "영업시간 미확인",
+      note: "할랄 음식점. 주문 시 하얀 소스 제외 요청"
+    },
+    en: {
+      name: "Adana Kebab (Hanyang Univ. Branch 2)",
+      address: "17, Majo-ro, Seongdong-gu",
+      menu: "Falafel wrap, falafel box, rice plate",
+      hours: "Hours unconfirmed",
+      note: "Halal restaurant. Ask them to leave out the white sauce"
+    }
+  },
+  {
+    type: "partial", lat: 37.5564, lng: 127.0439,
+    ko: {
+      name: "퀴즈노스 한양대",
+      address: "성동구 왕십리로 222",
+      menu: "플렉스 스테이크",
+      hours: "영업시간 미확인",
+      note: "주문 시 체다 치즈와 바비큐 소스 제외 요청"
+    },
+    en: {
+      name: "Quiznos (Hanyang Univ.)",
+      address: "222, Wangsimni-ro, Seongdong-gu",
+      menu: "Flex Steak sub",
+      hours: "Hours unconfirmed",
+      note: "Ask them to leave out the cheddar cheese and BBQ sauce"
+    }
+  },
+  {
+    type: "full", lat: 37.5605, lng: 127.0410,
+    ko: {
+      name: "한솥도시락 한양대후문점",
+      address: "성동구 마조로 33",
+      menu: "마파두부덮밥",
+      hours: "09:00 – 20:30",
+      note: "매장 내 식사 자리가 적음"
+    },
+    en: {
+      name: "Hansot Lunchbox (HYU Back Gate)",
+      address: "33, Majo-ro, Seongdong-gu",
+      menu: "Mapo tofu rice bowl",
+      hours: "09:00 – 20:30",
+      note: "Very limited seating — better for takeaway"
+    }
+  },
+  {
+    type: "full", lat: 37.5609, lng: 127.0381,
+    ko: {
+      name: "롯데리아 왕십리역사점",
+      address: "성동구 왕십리광장로 17",
+      menu: "NEW 미라클버거",
+      hours: "24시간 영업",
+      note: "배달 주문 가능"
+    },
+    en: {
+      name: "Lotteria (Wangsimni Station)",
+      address: "17, Wangsimni-gwangjang-ro, Seongdong-gu",
+      menu: "New Miracle Burger",
+      hours: "Open 24 hours",
+      note: "Delivery available"
+    }
+  },
+  {
+    type: "full", lat: 37.5609, lng: 127.0410,
+    ko: {
+      name: "본죽&비빔밥 한양대점",
+      address: "성동구 마조로 35",
+      menu: "단호박죽, 동지팥죽, 단팥죽, 녹두죽, 명품잣죽, 흑임자죽, 흰죽",
+      hours: "09:30 – 21:30",
+      note: "7가지 야채죽은 맹물 조리 요청 필요 / 반찬은 동치미 외에는 논비건"
+    },
+    en: {
+      name: "Bon Juk & Bibimbap (Hanyang Univ.)",
+      address: "35, Majo-ro, Seongdong-gu",
+      menu: "Sweet pumpkin, red bean, mung bean, pine nut, black sesame, and plain rice porridge",
+      hours: "09:30 – 21:30",
+      note: "For the seven-vegetable porridge, ask for plain water broth. Side dishes are non-vegan except the dongchimi radish water kimchi"
+    }
+  },
+  {
+    type: "friendly", lat: 37.5590, lng: 127.0398,
+    ko: {
+      name: "마장갈비 한양대점",
+      address: "성동구 마조로3가길 11",
+      menu: "누룽지",
+      hours: "10:30 – 22:30",
+      note: "단체 회식 시 방문 가능"
+    },
+    en: {
+      name: "Majang Galbi (Hanyang Univ.)",
+      address: "11, Majo-ro 3ga-gil, Seongdong-gu",
+      menu: "Nurungji (scorched rice)",
+      hours: "10:30 – 22:30",
+      note: "Workable option if you're joining a group dinner here"
+    }
+  },
+  {
+    type: "full", lat: 37.5614, lng: 127.0408,
+    ko: {
+      name: "어거스트 칠사일",
+      address: "성동구 마조로9길",
+      menu: "프랑스 바게트",
+      hours: "07:00 – 22:00",
+      note: "깜빠뉴에는 버터가 들어간다고 함"
+    },
+    en: {
+      name: "August 741",
+      address: "Majo-ro 9-gil, Seongdong-gu",
+      menu: "French baguette",
+      hours: "07:00 – 22:00",
+      note: "Note: their campagne contains butter"
+    }
+  },
+  {
+    type: "full", lat: 37.5563, lng: 127.0441,
+    ko: {
+      name: "세븐일레븐 NewWave한양대플라자점",
+      address: "성동구 왕십리로 222",
+      menu: "탱글 컵라면",
+      hours: "07:30 – 24:00",
+      note: "판매 중단 시 제보 바랍니다"
+    },
+    en: {
+      name: "7-Eleven (NewWave HYU Plaza)",
+      address: "222, Wangsimni-ro, Seongdong-gu",
+      menu: "Taengeul cup noodles",
+      hours: "07:30 – 24:00",
+      note: "Let us know if this item is discontinued"
+    }
+  },
+  {
+    type: "partial", lat: 37.5508, lng: 127.0474,
+    ko: {
+      name: "리프레쉬먼트",
+      address: "성동구 뚝섬로9길 14-1 1층",
+      menu: "후무스 샐러드, 비빔밥, 토마토/고사리 파스타",
+      hours: "11:00 – 20:00 (일·월 정기휴무)",
+      note: "메뉴가 자주 바뀌는 편"
+    },
+    en: {
+      name: "Refreshment",
+      address: "14-1, Ttukseom-ro 9-gil, 1F, Seongdong-gu",
+      menu: "Hummus salad, bibimbap, tomato / fernbrake pasta",
+      hours: "11:00 – 20:00 (closed Sun & Mon)",
+      note: "The menu changes fairly often"
+    }
+  },
+  {
+    type: "partial", lat: 37.5482, lng: 127.0428,
+    ko: {
+      name: "포도빵집",
+      address: "성동구 서울숲7길 9-1 1층",
+      menu: "포도빵, 비건 쌀식빵, 사워도우",
+      hours: "10:00 – 18:00",
+      note: "늦게 가면 빵이 많이 남아있지 않음"
+    },
+    en: {
+      name: "Podo Bakery",
+      address: "9-1, Seoulsup 7-gil, 1F, Seongdong-gu",
+      menu: "Grape bread, vegan rice loaf, sourdough",
+      hours: "10:00 – 18:00",
+      note: "Go early — they sell out quickly"
+    }
+  },
+  {
+    type: "partial", lat: 37.5471, lng: 127.0400,
+    ko: {
+      name: "카우떡볶이",
+      address: "성동구 서울숲2길 14 1층",
+      menu: "채식 즉석 떡볶이(로제·짜장·미나리), 메밀 막국수, 미나리전, 갈릭감자튀김, 시래기주먹밥",
+      hours: "11:00 – 20:30 (월요일 휴무)",
+      note: "예약이 안 되고 자리가 많지 않음"
+    },
+    en: {
+      name: "Cow Tteokbokki",
+      address: "14, Seoulsup 2-gil, 1F, Seongdong-gu",
+      menu: "Vegetarian tteokbokki (rosé, jjajang, water dropwort), buckwheat noodles, water dropwort pancake, garlic fries, radish-green rice balls",
+      hours: "11:00 – 20:30 (closed Mondays)",
+      note: "No reservations and limited seating"
+    }
+  },
+  {
+    type: "full", lat: 37.5422, lng: 127.0483,
+    ko: {
+      name: "푸른델리",
+      address: "성동구 성수일로3길 4-6 지하1층",
+      menu: "베이글 샌드위치, 스프, 쿠키",
+      hours: "11:00 – 18:00 (일요일 휴무)",
+      note: "피크닉 바스켓도 예약 가능"
+    },
+    en: {
+      name: "Pureun Deli",
+      address: "4-6, Seongsui-ro 3-gil, B1, Seongdong-gu",
+      menu: "Bagel sandwiches, soup, cookies",
+      hours: "11:00 – 18:00 (closed Sundays)",
+      note: "Picnic baskets available by reservation"
+    }
+  },
+  {
+    type: "friendly", lat: 37.5489, lng: 127.0543,
+    ko: {
+      name: "마리오네",
+      address: "성동구 광나루로2길 23-1 1층",
+      menu: "마리나라",
+      hours: "11:00 – 20:00 (월·화·수 휴무)",
+      note: "유명한 화덕피자집"
+    },
+    en: {
+      name: "Marione",
+      address: "23-1, Gwangnaru-ro 2-gil, 1F, Seongdong-gu",
+      menu: "Marinara pizza",
+      hours: "11:00 – 20:00 (closed Mon–Wed)",
+      note: "Well-known wood-fired pizza spot"
+    }
+  },
+  {
+    type: "partial", lat: 37.5482, lng: 127.0536,
+    ko: {
+      name: "리틀포레스트",
+      address: "성동구 성수일로12길 23 2층",
+      menu: "후무스 플레이트, 샐러드 파스타 (비건 요청 필요)",
+      hours: "10:00 – 18:00 (일요일 휴무)",
+      note: "건물에 엘리베이터 없음"
+    },
+    en: {
+      name: "Little Forest",
+      address: "23, Seongsui-ro 12-gil, 2F, Seongdong-gu",
+      menu: "Hummus plate, salad pasta (request vegan)",
+      hours: "10:00 – 18:00 (closed Sundays)",
+      note: "No elevator in the building"
+    }
+  },
+  {
+    type: "partial", lat: 37.5463, lng: 127.0440,
+    ko: {
+      name: "목로정원",
+      address: "성동구 서울숲2길 47 3층",
+      menu: "초코·당근 케이크, 바닐라빈 푸딩 (오트유 옵션 있음)",
+      hours: "12:00 – 19:00 (화요일 휴무)",
+      note: "건물에 엘리베이터 없음"
+    },
+    en: {
+      name: "Mokro Garden",
+      address: "47, Seoulsup 2-gil, 3F, Seongdong-gu",
+      menu: "Chocolate & carrot cake, vanilla bean pudding (oat milk option available)",
+      hours: "12:00 – 19:00 (closed Tuesdays)",
+      note: "No elevator in the building"
+    }
+  },
+  {
+    type: "partial", lat: 37.5433, lng: 127.0557,
+    ko: {
+      name: "하오마라",
+      address: "성동구 연무장5가길 25 2층 210호",
+      menu: "마라탕 100g당 2,000원 (채수 요청 필요)",
+      hours: "11:00 – 22:00 (일요일 휴무)",
+      note: "평일은 오후 3시 이후부터 채수 주문 가능"
+    },
+    en: {
+      name: "Hao Mala",
+      address: "25, Yeonmujang 5ga-gil, 2F #210, Seongdong-gu",
+      menu: "Malatang, ₩2,000 per 100g (request vegetable broth)",
+      hours: "11:00 – 22:00 (closed Sundays)",
+      note: "On weekdays, vegetable broth is only available after 3 PM"
+    }
+  },
+  {
+    type: "full", lat: 37.5414, lng: 127.0536,
+    ko: {
+      name: "코스모스상점 성수",
+      address: "성동구 연무장5가길 25 2층 210호",
+      menu: "음료, 샌드위치, 버거 등 (비건 그로서리 판매)",
+      hours: "11:00 – 20:30",
+      note: "여러 마리의 고양이가 매장에 살고 있음"
+    },
+    en: {
+      name: "Cosmos Shop Seongsu",
+      address: "25, Yeonmujang 5ga-gil, 2F #210, Seongdong-gu",
+      menu: "Drinks, sandwiches, burgers, plus a vegan grocery section",
+      hours: "11:00 – 20:30",
+      note: "Several resident cats live in the shop"
+    }
+  },
+  {
+    type: "partial", lat: 37.5441, lng: 127.0522,
+    ko: {
+      name: "베러초이스",
+      address: "성동구 연무장5길 9-13 2층",
+      menu: "비건 케이크, 구움과자, 쿠키",
+      hours: "12:00 – 21:00",
+      note: "베이커리 카페 '루프'와 같은 공간"
+    },
+    en: {
+      name: "Better Choice",
+      address: "9-13, Yeonmujang 5-gil, 2F, Seongdong-gu",
+      menu: "Vegan cakes, baked sweets, cookies",
+      hours: "12:00 – 21:00",
+      note: "Shares a space with the bakery cafe Loop"
+    }
+  },
+  {
+    type: "partial", lat: 37.5419, lng: 127.0483,
+    ko: {
+      name: "프라나 테이블",
+      address: "성동구 성수일로3길 3-9 1·2층, 루프탑",
+      menu: "두부 베지랩 샌드위치, 아사이 볼",
+      hours: "10:00 – 20:00",
+      note: "메뉴 종류가 많음"
+    },
+    en: {
+      name: "Prana Table",
+      address: "3-9, Seongsui-ro 3-gil, 1F–2F & rooftop, Seongdong-gu",
+      menu: "Tofu veggie wrap sandwich, acai bowl",
+      hours: "10:00 – 20:00",
+      note: "Wide range of menu options"
+    }
+  },
+  {
+    type: "full", lat: 37.5422, lng: 127.0492,
+    ko: {
+      name: "에피코어",
+      address: "성동구 뚝섬로3길 22 1층",
+      menu: "냉이달래 오렌지, 집된장 알리오, 약고추장 제육 등",
+      hours: "10:30 – 20:00",
+      note: "내 마음대로 조합하는 한식 포케"
+    },
+    en: {
+      name: "Epicore",
+      address: "22, Ttukseom-ro 3-gil, 1F, Seongdong-gu",
+      menu: "Shepherd's purse & orange, homemade doenjang aglio, gochujang bowls and more",
+      hours: "10:30 – 20:00",
+      note: "Build-your-own Korean-style poke bowls"
+    }
+  },
+  {
+    type: "partial", lat: 37.5441, lng: 127.0522,
+    ko: {
+      name: "르베지왕 성수공간",
+      address: "성동구 연무장1길 15-1 1층",
+      menu: "템페 버섯볼 포케, 두부 아보카도볼 포케",
+      hours: "10:40 – 20:00",
+      note: "브레이크 타임 15:00 – 16:00"
+    },
+    en: {
+      name: "Le Veggie Wang Seongsu",
+      address: "15-1, Yeonmujang 1-gil, 1F, Seongdong-gu",
+      menu: "Tempeh mushroom poke bowl, tofu avocado poke bowl",
+      hours: "10:40 – 20:00",
+      note: "Break time 15:00 – 16:00"
+    }
+  },
+  {
+    type: "partial", lat: 37.5443, lng: 127.0526,
+    ko: {
+      name: "칙피스 성수점",
+      address: "성동구 연무장5길 9-16 1층 101호",
+      menu: "피타볼, 샐러드, 라이스 (셀프바)",
+      hours: "11:30 – 20:30",
+      note: "평일 브레이크 타임 15:00 – 16:00"
+    },
+    en: {
+      name: "Chickpeas Seongsu",
+      address: "9-16, Yeonmujang 5-gil, 1F #101, Seongdong-gu",
+      menu: "Pita bowl, salad, rice bowl (self-serve bar)",
+      hours: "11:30 – 20:30",
+      note: "Weekday break time 15:00 – 16:00"
+    }
+  }
+];
+/* ===================================================== */
+
+const typeColor = { full: "#1D9E75", partial: "#BA7517", friendly: "#378ADD" };
+const tagClass  = { full: "tag-full", partial: "tag-partial", friendly: "tag-friendly" };
+
+let currentLang = "ko";
+let selected = null;   // 현재 열려 있는 식당 (언어 전환 시 유지)
+
+const map = L.map('map', {
+  center: [37.5510, 127.0460],
+  zoom: 15
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+function makeIcon(type) {
+  const color = typeColor[type];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z"
+      fill="${color}" stroke="white" stroke-width="2"/>
+    <circle cx="14" cy="14" r="5" fill="white" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [28, 36],
+    iconAnchor: [14, 36]
+  });
+}
+
+function tagText(type) {
+  const t = ui[currentLang];
+  if (type === "full") return t.tagFull;
+  if (type === "partial") return t.tagPartial;
+  return t.tagFriendly;
+}
+
+function showInfo(r) {
+  selected = r;
+  const d = r[currentLang];
+  document.getElementById('info-panel').innerHTML = `
+    <div class="info-name">${d.name}</div>
+    <span class="info-tag ${tagClass[r.type]}">${tagText(r.type)}</span>
+    <div class="info-row">📍 ${d.address}</div>
+    <div class="info-row">🕐 ${d.hours}</div>
+    <div class="info-row">🍽 ${d.menu}</div>
+    <div class="info-note">💬 ${d.note}</div>
+  `;
+}
+
+function showPlaceholder() {
+  document.getElementById('info-panel').innerHTML =
+    `<div class="info-placeholder">${ui[currentLang].placeholder}</div>`;
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  const t = ui[lang];
+
+  document.documentElement.lang = lang;
+  document.getElementById('site-title').textContent = t.title;
+  document.getElementById('site-subtitle').textContent = t.subtitle;
+  document.getElementById('legend-full').textContent = t.legendFull;
+  document.getElementById('legend-partial').textContent = t.legendPartial;
+  document.getElementById('legend-friendly').textContent = t.legendFriendly;
+  document.getElementById('site-footer').textContent = t.footer;
+
+  document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+  // 열려 있던 식당 정보가 있으면 그대로 언어만 바꿔서 다시 표시
+  if (selected) showInfo(selected);
+  else showPlaceholder();
+}
+
+restaurants.forEach(r => {
+  const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r.type) }).addTo(map);
+  marker.on('click', () => showInfo(r));
+});
+
+setLang('ko');
+</script>
+
+</body>
+</html>
